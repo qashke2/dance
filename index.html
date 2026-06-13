@@ -1,254 +1,284 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Radugа Tunnel</title>
-<style>
-  html, body {
-    margin: 0; padding: 0; overflow: hidden;
-    width: 100%; height: 100%;
-    background: #000;
-    font-family: 'Comic Sans MS', sans-serif;
-  }
-  #canvas {
-    position: fixed; top: 0; left: 0;
-    width: 100%; height: 100%;
-    display: block;
-  }
-  #sprite {
-    position: fixed;
-    left: 50%; top: 50%;
-    transform: translate(-50%, -50%);
-    width: 320px; height: 320px;
-    image-rendering: pixelated;
-    z-index: 5;
-    pointer-events: none;
-    filter: drop-shadow(0 0 20px #fff);
-  }
-  #startBtn {
-    position: fixed;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 10;
-    font-size: 2em;
-    padding: 30px 60px;
-    border: 4px solid #fff;
-    border-radius: 50px;
-    background: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00, #ff00ff);
-    background-size: 300% 300%;
-    animation: gradientMove 3s ease infinite;
-    color: #fff;
-    text-shadow: 0 0 10px #000;
-    cursor: pointer;
-    box-shadow: 0 0 30px #fff;
-    font-weight: bold;
-  }
-  @keyframes gradientMove {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-  #startBtn:active { transform: translate(-50%, -50%) scale(0.95); }
-</style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radugа Tunnel</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        font-family: "Comic Sans MS", sans-serif;
+      }
+      #canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      #sprite {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 320px;
+        height: 320px;
+        image-rendering: pixelated;
+        z-index: 5;
+        pointer-events: none;
+        filter: drop-shadow(0 0 20px #fff);
+      }
+      #startBtn {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+        font-size: 2em;
+        padding: 30px 60px;
+        border: 4px solid #fff;
+        border-radius: 50px;
+        background: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00, #ff00ff);
+        background-size: 300% 300%;
+        animation: gradientMove 3s ease infinite;
+        color: #fff;
+        text-shadow: 0 0 10px #000;
+        cursor: pointer;
+        box-shadow: 0 0 30px #fff;
+        font-weight: bold;
+      }
+      @keyframes gradientMove {
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
+        }
+      }
+      #startBtn:active {
+        transform: translate(-50%, -50%) scale(0.95);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <img id="sprite" src="dance.png" style="display: none" />
+    <button id="startBtn">нука 🌈✨</button>
+    <audio id="audio" src="music.mp3" loop></audio>
 
-<canvas id="canvas"></canvas>
-<img id="sprite" src="dance.png" style="display:none;">
-<button id="startBtn">НАЧАТЬ 🌈✨</button>
-<audio id="audio" src="music.mp3" loop></audio>
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      const startBtn = document.getElementById("startBtn");
+      const audio = document.getElementById("audio");
+      const sprite = document.getElementById("sprite");
 
-<script>
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const startBtn = document.getElementById('startBtn');
-const audio = document.getElementById('audio');
-const sprite = document.getElementById('sprite');
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      window.addEventListener("resize", resize);
+      resize();
 
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
+      // ---------- AUDIO ANALYSER ----------
+      let audioCtx, analyser, dataArray, source;
+      function initAudio() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        source = audioCtx.createMediaElementSource(audio);
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+      }
 
-// ---------- AUDIO ANALYSER ----------
-let audioCtx, analyser, dataArray, source;
-function initAudio() {
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 512;
-  source = audioCtx.createMediaElementSource(audio);
-  source.connect(analyser);
-  analyser.connect(audioCtx.destination);
-  dataArray = new Uint8Array(analyser.frequencyBinCount);
-}
+      function getBeat() {
+        if (!analyser) return 0;
+        analyser.getByteFrequencyData(dataArray);
+        // берем низкие частоты (бас) - первые ~10 бинов
+        let sum = 0;
+        for (let i = 0; i < 12; i++) sum += dataArray[i];
+        return sum / 12 / 255; // 0..1
+      }
 
-function getBeat() {
-  if (!analyser) return 0;
-  analyser.getByteFrequencyData(dataArray);
-  // берем низкие частоты (бас) - первые ~10 бинов
-  let sum = 0;
-  for (let i = 0; i < 12; i++) sum += dataArray[i];
-  return sum / 12 / 255; // 0..1
-}
+      // ---------- SPARKLES ----------
+      const sparkles = [];
+      for (let i = 0; i < 80; i++) {
+        sparkles.push({
+          x: Math.random(),
+          y: Math.random(),
+          size: Math.random() * 3 + 1,
+          speed: Math.random() * 0.5 + 0.2,
+          phase: Math.random() * Math.PI * 2,
+          hue: Math.random() * 360,
+        });
+      }
 
-// ---------- SPARKLES ----------
-const sparkles = [];
-for (let i = 0; i < 80; i++) {
-  sparkles.push({
-    x: Math.random(),
-    y: Math.random(),
-    size: Math.random() * 3 + 1,
-    speed: Math.random() * 0.5 + 0.2,
-    phase: Math.random() * Math.PI * 2,
-    hue: Math.random() * 360
-  });
-}
+      function drawSparkles(time, beat) {
+        for (const s of sparkles) {
+          const x =
+            (s.x * canvas.width + Math.sin(time * 0.0005 + s.phase) * 30) %
+            canvas.width;
+          const y =
+            (s.y * canvas.height + time * 0.02 * s.speed) % canvas.height;
+          const tw = (Math.sin(time * 0.005 + s.phase) + 1) / 2;
+          const size = s.size * (1 + beat * 2) * (0.5 + tw);
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(time * 0.001 * s.speed);
+          ctx.fillStyle = `hsla(${s.hue}, 100%, ${70 + tw * 30}%, ${0.4 + tw * 0.6})`;
+          drawStar(ctx, 0, 0, size * 3, size, 4);
+          ctx.restore();
+        }
+      }
 
-function drawSparkles(time, beat) {
-  for (const s of sparkles) {
-    const x = (s.x * canvas.width + Math.sin(time * 0.0005 + s.phase) * 30) % canvas.width;
-    const y = (s.y * canvas.height + time * 0.02 * s.speed) % canvas.height;
-    const tw = (Math.sin(time * 0.005 + s.phase) + 1) / 2;
-    const size = s.size * (1 + beat * 2) * (0.5 + tw);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(time * 0.001 * s.speed);
-    ctx.fillStyle = `hsla(${s.hue}, 100%, ${70 + tw*30}%, ${0.4 + tw * 0.6})`;
-    drawStar(ctx, 0, 0, size * 3, size, 4);
-    ctx.restore();
-  }
-}
+      function drawStar(ctx, cx, cy, outerR, innerR, points) {
+        ctx.beginPath();
+        for (let i = 0; i < points * 2; i++) {
+          const r = i % 2 === 0 ? outerR : innerR;
+          const a = (Math.PI / points) * i - Math.PI / 2;
+          const x = cx + Math.cos(a) * r;
+          const y = cy + Math.sin(a) * r;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
 
-function drawStar(ctx, cx, cy, outerR, innerR, points) {
-  ctx.beginPath();
-  for (let i = 0; i < points * 2; i++) {
-    const r = i % 2 === 0 ? outerR : innerR;
-    const a = (Math.PI / points) * i - Math.PI/2;
-    const x = cx + Math.cos(a) * r;
-    const y = cy + Math.sin(a) * r;
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-  ctx.fill();
-}
+      // ---------- TUNNEL ----------
+      let tunnelOffset = 0;
+      const RINGS = 14;
 
-// ---------- TUNNEL ----------
-let tunnelOffset = 0;
-const RINGS = 14;
+      function drawTunnel(time, beat) {
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const maxR = Math.hypot(canvas.width, canvas.height) * 0.75;
 
-function drawTunnel(time, beat) {
-  const cx = canvas.width / 2;
-  const cy = canvas.height / 2;
-  const maxR = Math.hypot(canvas.width, canvas.height) * 0.75;
+        tunnelOffset += 0.015 + beat * 0.05;
 
-  tunnelOffset += 0.015 + beat * 0.05;
+        for (let i = RINGS; i >= 0; i--) {
+          let t = (i / RINGS + tunnelOffset) % 1;
+          // pulse scale on beat
+          const pulse = 1 + beat * 0.5;
+          const r = Math.pow(t, 1.8) * maxR * pulse;
+          const hue = (t * 360 + time * 0.05) % 360;
 
-  for (let i = RINGS; i >= 0; i--) {
-    let t = (i / RINGS + tunnelOffset) % 1;
-    // pulse scale on beat
-    const pulse = 1 + beat * 0.5;
-    const r = Math.pow(t, 1.8) * maxR * pulse;
-    const hue = (t * 360 + time * 0.05) % 360;
+          const grad = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r);
+          grad.addColorStop(
+            0,
+            `hsla(${(hue + 60) % 360}, 100%, ${60 + beat * 15}%, 1)`,
+          );
+          grad.addColorStop(1, `hsla(${hue}, 100%, ${40 + beat * 15}%, 1)`);
 
-    const grad = ctx.createRadialGradient(cx, cy, r*0.3, cx, cy, r);
-    grad.addColorStop(0, `hsla(${(hue+60)%360}, 100%, ${60 + beat*15}%, 1)`);
-    grad.addColorStop(1, `hsla(${hue}, 100%, ${40 + beat*15}%, 1)`);
+          ctx.fillStyle = grad;
 
-    ctx.fillStyle = grad;
+          // draw a "fold" polygon shape (like curtains/tunnel segments)
+          const segs = 8;
+          ctx.beginPath();
+          for (let s = 0; s <= segs; s++) {
+            const ang = (s / segs) * Math.PI * 2 + time * 0.0003;
+            const wob = Math.sin(ang * 3 + time * 0.002) * r * 0.08;
+            const rr = r + wob;
+            const x = cx + Math.cos(ang) * rr;
+            const y = cy + Math.sin(ang) * rr;
+            if (s === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
 
-    // draw a "fold" polygon shape (like curtains/tunnel segments)
-    const segs = 8;
-    ctx.beginPath();
-    for (let s = 0; s <= segs; s++) {
-      const ang = (s / segs) * Math.PI * 2 + time * 0.0003;
-      const wob = Math.sin(ang * 3 + time * 0.002) * r * 0.08;
-      const rr = r + wob;
-      const x = cx + Math.cos(ang) * rr;
-      const y = cy + Math.sin(ang) * rr;
-      if (s === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
-}
+      // ---------- SPRITE ANIMATION ----------
+      // spritesheet 2560x2560, 512px per frame, 21 frames total
+      // assume grid: 5 columns x 5 rows (last row partial -> 21 frames)
+      const FRAME_SIZE = 512;
+      const COLS = 5;
+      const TOTAL_FRAMES = 21;
+      let currentFrame = 0;
+      let frameTimer = 0;
+      const FRAME_DURATION = 30; // ms per frame baseline
 
-// ---------- SPRITE ANIMATION ----------
-// spritesheet 2560x2560, 512px per frame, 21 frames total
-// assume grid: 5 columns x 5 rows (last row partial -> 21 frames)
-const FRAME_SIZE = 512;
-const COLS = 5;
-const TOTAL_FRAMES = 21;
-let currentFrame = 0;
-let frameTimer = 0;
-const FRAME_DURATION = 80; // ms per frame baseline
+      const spriteCanvas = document.createElement("canvas");
+      spriteCanvas.width = FRAME_SIZE;
+      spriteCanvas.height = FRAME_SIZE;
+      const spriteCtx = spriteCanvas.getContext("2d");
+      const spriteImg = new Image();
+      spriteImg.src = "dance.png";
 
-const spriteCanvas = document.createElement('canvas');
-spriteCanvas.width = FRAME_SIZE;
-spriteCanvas.height = FRAME_SIZE;
-const spriteCtx = spriteCanvas.getContext('2d');
-const spriteImg = new Image();
-spriteImg.src = 'dance.png';
+      function drawSprite(beat) {
+        if (!spriteImg.complete || spriteImg.naturalWidth === 0) return;
 
-function drawSprite(beat) {
-  if (!spriteImg.complete || spriteImg.naturalWidth === 0) return;
+        const col = currentFrame % COLS;
+        const row = Math.floor(currentFrame / COLS);
 
-  const col = currentFrame % COLS;
-  const row = Math.floor(currentFrame / COLS);
+        spriteCtx.clearRect(0, 0, FRAME_SIZE, FRAME_SIZE);
+        spriteCtx.drawImage(
+          spriteImg,
+          col * FRAME_SIZE,
+          row * FRAME_SIZE,
+          FRAME_SIZE,
+          FRAME_SIZE,
+          0,
+          0,
+          FRAME_SIZE,
+          FRAME_SIZE,
+        );
 
-  spriteCtx.clearRect(0, 0, FRAME_SIZE, FRAME_SIZE);
-  spriteCtx.drawImage(
-    spriteImg,
-    col * FRAME_SIZE, row * FRAME_SIZE, FRAME_SIZE, FRAME_SIZE,
-    0, 0, FRAME_SIZE, FRAME_SIZE
-  );
+        const size = canvas.height * 0.5 * (1 + beat * 0.15);
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
 
-  const size = (canvas.height * 0.5) * (1 + beat * 0.15);
-  const cx = canvas.width / 2;
-  const cy = canvas.height / 2;
+        ctx.save();
+        ctx.shadowColor = "#fff";
+        ctx.shadowBlur = 20 + beat * 30;
+        ctx.drawImage(spriteCanvas, cx - size / 2, cy - size / 2, size, size);
+        ctx.restore();
+      }
 
-  ctx.save();
-  ctx.shadowColor = '#fff';
-  ctx.shadowBlur = 20 + beat * 30;
-  ctx.drawImage(spriteCanvas, cx - size/2, cy - size/2, size, size);
-  ctx.restore();
-}
+      // ---------- MAIN LOOP ----------
+      let lastTime = 0;
+      function loop(time) {
+        const dt = time - lastTime;
+        lastTime = time;
 
-// ---------- MAIN LOOP ----------
-let lastTime = 0;
-function loop(time) {
-  const dt = time - lastTime;
-  lastTime = time;
+        const beat = getBeat();
 
-  const beat = getBeat();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawTunnel(time, beat);
+        drawSparkles(time, beat);
+        drawSprite(beat);
 
-  drawTunnel(time, beat);
-  drawSparkles(time, beat);
-  drawSprite(beat);
+        // advance sprite frame, faster on beat
+        frameTimer += dt * (1 + beat * 2);
+        if (frameTimer > FRAME_DURATION) {
+          frameTimer = 0;
+          currentFrame = (currentFrame + 1) % TOTAL_FRAMES;
+        }
 
-  // advance sprite frame, faster on beat
-  frameTimer += dt * (1 + beat * 2);
-  if (frameTimer > FRAME_DURATION) {
-    frameTimer = 0;
-    currentFrame = (currentFrame + 1) % TOTAL_FRAMES;
-  }
+        requestAnimationFrame(loop);
+      }
 
-  requestAnimationFrame(loop);
-}
-
-// ---------- START ----------
-startBtn.addEventListener('click', () => {
-  startBtn.style.display = 'none';
-  initAudio();
-  audio.play();
-  audioCtx.resume();
-  requestAnimationFrame(loop);
-});
-</script>
-
-</body>
+      // ---------- START ----------
+      startBtn.addEventListener("click", () => {
+        startBtn.style.display = "none";
+        initAudio();
+        audio.play();
+        audioCtx.resume();
+        requestAnimationFrame(loop);
+      });
+    </script>
+  </body>
 </html>
