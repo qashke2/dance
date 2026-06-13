@@ -88,7 +88,7 @@
 
       function checkReady() {
         if (assetsLoaded.sprite && assetsLoaded.audio) {
-          startBtn.textContent = "НАЧАТЬ 🌈✨";
+          startBtn.textContent = "нука 🌈✨";
           startBtn.disabled = false;
         }
       }
@@ -150,7 +150,10 @@
         });
       }
 
-      function drawSparkles(time, beat) {
+      let sparkleTime = 0;
+      function drawSparkles(dt, beat) {
+        sparkleTime += dt;
+        const time = sparkleTime;
         for (const s of sparkles) {
           const x =
             (s.x * canvas.width + Math.sin(time * 0.0005 + s.phase) * 30) %
@@ -186,12 +189,13 @@
       let tunnelOffset = 0;
       const RINGS = 14;
 
-      function drawTunnel(time, beat) {
+      function drawTunnel(dt, beat) {
         const cx = canvas.width / 2;
         const cy = canvas.height / 2;
         const maxR = Math.hypot(canvas.width, canvas.height) * 0.75;
 
-        tunnelOffset += 0.015 + beat * 0.05;
+        tunnelOffset += (0.015 + beat * 0.05) * (dt / 16.6667);
+        const time = tunnelOffset * 1000;
 
         for (let i = RINGS; i >= 0; i--) {
           let t = (i / RINGS + tunnelOffset) % 1;
@@ -286,8 +290,8 @@
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        drawTunnel(time, beat);
-        drawSparkles(time, beat);
+        drawTunnel(dt, beat);
+        drawSparkles(dt, beat);
         drawSprite(beat);
 
         // advance sprite frame, faster on beat
