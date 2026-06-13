@@ -88,7 +88,7 @@
 
       function checkReady() {
         if (assetsLoaded.sprite && assetsLoaded.audio) {
-          startBtn.textContent = "нука 🌈✨";
+          startBtn.textContent = "нука";
           startBtn.disabled = false;
         }
       }
@@ -138,8 +138,11 @@
       }
 
       // ---------- SPARKLES ----------
+      const isMobile =
+        window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent);
+      const SPARKLE_COUNT = isMobile ? 30 : 80;
       const sparkles = [];
-      for (let i = 0; i < 80; i++) {
+      for (let i = 0; i < SPARKLE_COUNT; i++) {
         sparkles.push({
           x: Math.random(),
           y: Math.random(),
