@@ -73,14 +73,40 @@
   <body>
     <canvas id="canvas"></canvas>
     <img id="sprite" src="dance.png" style="display: none" />
-    <button id="startBtn">нука 🌈✨</button>
+    <button id="startBtn" disabled>Загрузка...</button>
     <audio id="audio" src="music.mp3" loop></audio>
 
     <script>
+      // ---------- PRELOAD ----------
+      let assetsLoaded = { sprite: false, audio: false };
+      const preloadSprite = new Image();
+      preloadSprite.src = "dance.png";
+      preloadSprite.onload = () => {
+        assetsLoaded.sprite = true;
+        checkReady();
+      };
+
+      function checkReady() {
+        if (assetsLoaded.sprite && assetsLoaded.audio) {
+          startBtn.textContent = "НАЧАТЬ 🌈✨";
+          startBtn.disabled = false;
+        }
+      }
+
       const canvas = document.getElementById("canvas");
       const ctx = canvas.getContext("2d");
       const startBtn = document.getElementById("startBtn");
       const audio = document.getElementById("audio");
+      audio.preload = "auto";
+      audio.addEventListener(
+        "canplaythrough",
+        () => {
+          assetsLoaded.audio = true;
+          checkReady();
+        },
+        { once: true },
+      );
+      audio.load();
       const sprite = document.getElementById("sprite");
 
       function resize() {
@@ -250,8 +276,11 @@
       // ---------- MAIN LOOP ----------
       let lastTime = 0;
       function loop(time) {
-        const dt = time - lastTime;
+        if (lastTime === 0) lastTime = time;
+        let dt = time - lastTime;
         lastTime = time;
+        // clamp dt to avoid huge jumps (e.g. tab inactive, slow first frame)
+        dt = Math.min(dt, 50);
 
         const beat = getBeat();
 
@@ -277,6 +306,7 @@
         initAudio();
         audio.play();
         audioCtx.resume();
+        lastTime = 0;
         requestAnimationFrame(loop);
       });
     </script>
